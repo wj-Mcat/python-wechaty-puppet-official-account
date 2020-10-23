@@ -60,15 +60,15 @@ def get_install_requires() -> str:
 
 
 setuptools.setup(
-    name='your-package-name',
+    name='wechaty-puppet-official-account',
     version=get_version(),
     author='wj-Mcat',
     author_email='wjmcater@gmail.com',
-    description='your package description',
+    description='Wechaty Puppet for WeChat Official Account',
     long_description=get_long_description(),
     long_description_content_type='text/markdown',
     license='Apache-2.0',
-    url='your-repo-url',
+    url='https://github.com/wechaty/python-wechaty-puppet-official-account',
     packages=setuptools.find_packages('src'),
     package_dir={'': 'src'},
     install_requires=get_install_requires(),

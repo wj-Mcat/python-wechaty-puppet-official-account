@@ -1,0 +1,8 @@
+diskcache
+qrcode
+requests
+aiohttp
+pyee
+pycryptodome
+xmltodict
+wechaty-puppet
