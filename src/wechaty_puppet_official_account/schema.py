@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal, List
+from datetime import datetime
+
 from wechaty_puppet import ContactGender
 
 OAMessageType = Literal[
@@ -80,3 +82,10 @@ class VerifyArgs:
     nonce: str
     signature: str
     echostr: str
+
+
+@dataclass
+class AccessTokenPayload:
+    expires_in: int
+    refresh_time: datetime
+    token: str

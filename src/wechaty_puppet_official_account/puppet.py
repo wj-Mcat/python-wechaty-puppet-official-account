@@ -19,6 +19,7 @@ limitations under the License.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import List, Optional
 from dataclasses import dataclass
 from pyee import AsyncIOEventEmitter
@@ -67,8 +68,7 @@ from wechaty_puppet.exceptions import (  # type: ignore
 )
 
 from wechaty_puppet_official_account import config
-from .official_account import OfficialAccount
-from .webhook import Webhook, WebhookOptions
+from .official_account import OfficialAccount, OfficialAccountOption
 from .schema import OAMessagePayload
 
 logger = get_logger('OfficialAccountPuppet')
@@ -100,7 +100,14 @@ class OfficialAccountPuppet(Puppet):
 
         super().__init__(options, 'puppet-official-account')
 
-        self.oa: OfficialAccount = OfficialAccount()
+        self.oa: OfficialAccount = OfficialAccount(
+            options=OfficialAccountOption(
+                app_id=options.app_id,
+                app_secret=options.app_secret,
+                port=options.port,
+                token=options.token
+            )
+        )
         self._event_emitter: AsyncIOEventEmitter = AsyncIOEventEmitter()
 
     async def init_event_bridge(self):
@@ -108,9 +115,12 @@ class OfficialAccountPuppet(Puppet):
         init the event bus
         """
         async def on_message(oaPayload: OAMessagePayload):
-            self._event_emitter
+            payload = MessagePayload(
+                id=oaPayload.MsgId
+            )
+            self._event_emitter.emit('message', payload)
 
-        self.webhook.on('message', on_message)
+        self._event_emitter.on('message', on_message)
 
     async def message_image(self, message_id: str, image_type: ImageType) -> FileBox:
         pass
@@ -123,14 +133,16 @@ class OfficialAccountPuppet(Puppet):
         self._event_emitter.on(event_name, caller)
 
     def listener_count(self, event_name: str) -> int:
-        pass
+        return self._event_emitter.listeners(event_name).count()
 
     async def start(self) -> None:
         """start the puppet"""
-        await self.webhook.start()
+        await self.oa.start()
+        while True:
+            await asyncio.sleep(2)
 
     async def stop(self):
-        pass
+        await self.oa.stop()
 
     async def contact_list(self) -> List[str]:
         pass

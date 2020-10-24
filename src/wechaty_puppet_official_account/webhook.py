@@ -21,12 +21,14 @@ from __future__ import annotations
 
 import asyncio
 
+from aiohttp.web_runner import BaseSite
 from pyee import AsyncIOEventEmitter
 from aiohttp import web
 from aiohttp.web_request import Request
 from dataclasses import dataclass
-from typing import Callable
-from wechaty_puppet import get_logger
+from typing import Callable, Optional
+from wechaty_puppet import get_logger, WechatyPuppetOperationError
+
 from Crypto.Hash import SHA1
 import xmltodict
 
@@ -37,7 +39,6 @@ from .schema import VerifyArgs, OAMessagePayload
 class WebhookOptions:
     port: int
     token: str
-
 
 logger = get_logger('Webhook')
 
@@ -50,19 +51,10 @@ class Webhook(AsyncIOEventEmitter):
     def __init__(self, options: WebhookOptions):
         super().__init__()
         self.options: WebhookOptions = options
+        self.site: Optional[BaseSite] = None
 
-
-
-    @staticmethod
-    async def receive_message(request):
-        pass
-
-    async def start(self):
-        """
-        start the webhook local server
-        """
-        logger.info('starting the webhook server ...')
-
+    def init_site(self):
+        """init the web site configuration"""
         routes = web.RouteTableDef()
 
         @routes.get('/')
@@ -91,20 +83,34 @@ class Webhook(AsyncIOEventEmitter):
             if payload.MsgType in ['text', 'image']:
                 self.emit('message', payload)
 
+        app = web.Application()
+        app.add_routes(routes)
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+
+        self.site = web.TCPSite(runner, '0.0.0.0', self.options.port)
+
+    @staticmethod
+    async def receive_message(request):
+        pass
+
+    async def start(self):
+        """
+        start the webhook local server
+        """
+        logger.info('starting the webhook server ...')
+
         async def run_server():
-            app = web.Application()
-            app.add_routes(routes)
-
-            runner = web.AppRunner(app)
-            await runner.setup()
-
-            site = web.TCPSite(runner, '0.0.0.0', self.options.port)
-            logger.info(f'the server started at: http://0.0.0.0:{self.options.port}')
-            await site.start()
+            if not self.site:
+                raise WechatyPuppetOperationError(f'please init the site configuration before starting the site ...')
+            await self.site.start()
 
         loop = asyncio.get_event_loop()
         asyncio.run_coroutine_threadsafe(run_server(), loop=loop)
+        logger.info(f'the server started at: http://0.0.0.0:{self.options.port}')
         logger.info('webhook server started ...')
 
-        while True:
-            await asyncio.sleep(1)
+    async def stop(self):
+        """stopping web application"""
+        await self.site.stop()
